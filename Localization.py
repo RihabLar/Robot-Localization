@@ -66,10 +66,10 @@ class Localization:
         xsk_1 = self.robot.xsk_1
 
         for self.k in range(self.kSteps):
-            xsk = self.robot.fs(xsk_1, usk)  # Simulate the robot motion
+            xsk = self.robot.fs(xsk_1, usk)  # Simulate the robot motion # ground truth (yellow path)
 
-            uk = self.GetInput()  # Get the input from the robot
-            self.xk = self.Localize(xk_1,uk)  # Localize the robot
+            uk = self.GetInput()  # Get the input from the robot    # adding noise
+            self.xk = self.Localize(xk_1,uk)  # Localize the robot      # dead reckoning (blue path)
 
             xsk_1 = xsk  # current state becomes previous state for next iteration
             xk_1 = self.xk

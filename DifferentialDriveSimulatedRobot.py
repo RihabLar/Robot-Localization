@@ -4,6 +4,7 @@ from Pose3D import *
 import scipy
 from roboticstoolbox.mobile.Animations import *
 import numpy as np
+from numpy import transpose
 
 
 class DifferentialDriveSimulatedRobot(SimulatedRobot):
@@ -11,6 +12,7 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
     This class implements a simulated differential drive robot. It inherits from the :class:`SimulatedRobot` class and
     overrides some of its methods to define the differential drive robot motion model.
     """
+    
     def __init__(self, xs0, map=[],*args):
         """
         :param xs0: initial simulated robot state :math:`\\mathbf{x_{s_0}}=[^Nx{_{s_0}}~^Ny{_{s_0}}~^N\psi{_{s_0}}~]^T` used to initialize the  motion model
@@ -65,7 +67,7 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
 
         # Initialize the sensor simulation
         self.encoder_reading_frequency = 1  # frequency of encoder readings
-        self.Re= np.diag(np.array([22 ** 2, 22 ** 2]))  # covariance of simulated wheel encoder noise
+        self.Re = np.diag(np.array([22 ** 2, 22 ** 2]))  # covariance of simulated wheel encoder noise
 
         self.Polar2D_feature_reading_frequency = 50  # frequency of Polar2D feature readings
         self.Polar2D_max_range = 50  # maximum Polar2D range, used to simulate the field of view
@@ -74,8 +76,9 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         self.xy_feature_reading_frequency = 50  # frequency of XY feature readings
         self.xy_max_range = 50  # maximum XY range, used to simulate the field of view
 
-        self.yaw_reading_frequency = 10  # frequency of Yasw readings
+        self.yaw_reading_frequency = 10  # frequency of Yaw readings
         self.v_yaw_std = np.deg2rad(5)  # std deviation of simulated heading noise
+
 
     def fs(self, xsk_1, usk):  # input velocity motion model with velocity noise
         """ Motion model used to simulate the robot motion. Computes the current robot state :math:`x_k` given the previous robot state :math:`x_{k-1}` and the input :math:`u_k`:
@@ -108,10 +111,18 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         """
 
         # TODO: to be completed by the student
-        #
+        
+        etask_min1 = xsk_1[0:3] # the previous pose of the robot
+        vsk_min1 = xsk_1[3:6] # the  previous velocity of the robot
+        delta_t = self.dt # the time step
+        usk = np.array([usk[0], [0], usk[1]]) # the desired velocity
+        wsk = np.random.multivariate_normal([0, 0, 0], self.Qsk).reshape(3, 1) # the acceleration noise
+        self.usk = usk
 
-
-        #
+        K = np.diag(np.abs(np.random.randn(3))) # the gain matrix
+        line1 = Pose3D.oplus(etask_min1, ((vsk_min1 * delta_t) + (1/2 * wsk * delta_t**2))) # updated position
+        line2 = vsk_min1 + (K @ (usk - vsk_min1)) + (wsk * delta_t) # updated velocity
+        self.xsk = np.concatenate((line1, line2)) # updated state
 
         if self.k % self.visualizationInterval == 0:
                 self.PlotRobot()
@@ -133,8 +144,20 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         """
 
         # TODO: to be completed by the student
+        
+        fd = self.xsk[3][0] * self.dt # forward distance
+        te = (self.wheelBase * self.xsk[5][0] * self.dt) / 2 # turning effect
+        dl = fd - te # left wheel displacement
+        dr = fd + te # right wheel displacement
+        nl = (dl * self.pulse_x_wheelTurns) / (2 * np.pi * self.wheelRadius) # number of pulses for left wheel
+        nr = (dr * self.pulse_x_wheelTurns) / (2 * np.pi * self.wheelRadius) # number of pulses for right wheel
 
-        pass
+        Rsk = self.Re
+        noise = np.random.multivariate_normal([0, 0], Rsk).reshape(2, 1) # noise sampled from covariance matrix
+        zk = np.array([[nl + noise[0][0]], [nr + noise[1][0]]]) # wheel readings with noise added
+
+        return zk, Rsk
+
 
     def ReadCompass(self):
         """ Simulates the compass reading of the robot.
@@ -144,12 +167,15 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
 
         # TODO: to be completed by the student
 
-        pass
+        yaw = self.xsk[0][2]
+        R_yaw = self.Qsk
+
+        return yaw, R_yaw
+
 
     def PlotRobot(self):
         """ Updates the plot of the robot at the current pose """
 
         self.vehicleIcon.update([self.xsk[0], self.xsk[1], self.xsk[2]])
-        plt.pause(0.0000001)
+        plt.pause(0.00001)
         return
-

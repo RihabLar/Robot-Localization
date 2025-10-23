@@ -1,5 +1,7 @@
 from Localization import *
 import numpy as np
+from DifferentialDriveSimulatedRobot import *
+import math
 
 class DR_3DOFDifferentialDrive(Localization):
     """
@@ -20,6 +22,7 @@ class DR_3DOFDifferentialDrive(Localization):
         self.wheelBase = 0.5  # wheel base
         self.robot.pulse_x_wheelTurns = 4096  # number of pulses per wheel turn
 
+
     def Localize(self, xk_1, uk):  # motion model
         """
         Motion model for the 3DOF (:math:`x_k=[x_{k}~y_{k}~\psi_{k}]^T`) Differential Drive Mobile robot using as input the readings of the wheel encoders (:math:`u_k=[n_L~n_R]^T`).
@@ -35,7 +38,21 @@ class DR_3DOFDifferentialDrive(Localization):
 
         # TODO: to be completed by the student
 
-        pass
+        R = self.robot.wheelRadius # radius of robot's wheels
+        pulses = self.robot.pulse_x_wheelTurns # number of pulses for a full wheel rotation
+        wheel_base = self.robot.wheelBase # distance between the two wheels
+
+        nl, nr = uk[0], uk[1] # uk = [nl, nr]
+        dl = nl * (2*math.pi*R) / pulses # left wheel displacement
+        dr = nr * (2*math.pi*R) / pulses # right wheel displacement
+        dk = (dl + dr)/2 # distance travelled by robot aka forward distance
+        yaw = (dr - dl) / wheel_base # angle that the robot has turned
+        
+        change = Pose3D(np.array([dk, [0], yaw])) # change in position (dk along x axis, 0 along y axis and psi angle change)
+        xk = xk_1.oplus(change) # updated position
+
+        return xk
+
 
     def GetInput(self):
         """
@@ -46,5 +63,7 @@ class DR_3DOFDifferentialDrive(Localization):
 
         # TODO: to be completed by the student
 
-        pass
+        wheel_readings = self.robot.ReadEncoders()
+        uk = np.array([wheel_readings[0][0], wheel_readings[0][1]])
+        return uk
 

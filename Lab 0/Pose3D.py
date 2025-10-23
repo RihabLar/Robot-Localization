@@ -20,6 +20,7 @@ class Pose3D(np.ndarray):
         obj = np.asarray(input_array).view(cls)
         # Finally, we must return the newly created object:
         return obj
+    
 
     def oplus(AxB, BxC):
         """
@@ -43,7 +44,7 @@ class Pose3D(np.ndarray):
         :param BxC: C-Frame pose expressed in B-Frame coordinates
         :returns: C-Frame pose expressed in A-Frame coordinates
         """
-
+        
         # TODO: to be completed by the student
         
         AxC_x = AxB[0][0] + (BxC[0][0] * cos(AxB[2][0])) - (BxC[1][0] * sin(AxB[2][0]))
@@ -54,6 +55,7 @@ class Pose3D(np.ndarray):
     
         return AxC
 
+    
     def ominus(AxB):
         """
         Inverse pose compounding of the *AxB* pose (the self objetc):
